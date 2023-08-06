@@ -151,8 +151,8 @@ int match (Pattern* pattern_p, char* string) {
 }
 
 char* boolToResultString (bool b) {
-    if (b) return "PASSED";
-    return "FAILED";
+    if (b) return "Test \033[1;32mPASSED\033[1;0m";
+    return "Test \033[1;31mFAILED\033[1;0m";
 }
 
 bool assert(bool value, bool expected, bool debug) {
@@ -162,7 +162,7 @@ bool assert(bool value, bool expected, bool debug) {
 
 bool summarize (bool (*f) (bool)) {
     bool result = f(false);
-    printf("Test %s\n", boolToResultString(result));
+    printf("SUMMARY: %s\n", boolToResultString(result));
 }
 
 bool testCheckPattern (bool debug) {
@@ -188,7 +188,18 @@ bool testGeneratePattern (bool debug) {
     bool b5 = assert(checkPattern(node_1_p, "12A"), true, debug);
     bool b6 = assert(checkPattern(node_1_p, "A1"), false, debug);
     freePatternNode(node_1_p);
-    return b1 && b2 && b3 && b4 && b5 && b6;
+    PatternNode* String = generatePattern("'u+'");
+    PatternNode* Integer = generatePattern("d+");
+    bool b7 = assert(checkPattern(Integer, "1"), true, debug);
+    bool b8 = assert(checkPattern(Integer, "A"), false, debug);
+    bool b9 = assert(checkPattern(Integer, "1A"), true, debug);
+    bool b10 = assert(checkPattern(Integer, "A1"), false, debug);
+    bool b11 = assert(checkPattern(String, "'ABC'"), true, debug);
+    bool b12 = assert(checkPattern(Integer, "xy123"), true, debug);
+    bool b13 = assert(checkPattern(String, "12"), true, debug);
+    freePatternNode(Integer);
+    freePatternNode(String);
+    return b1 && b2 && b3 && b4 && b5 && b6 && b7 && b8 && b9 && b10 && b11 && b12 && b13;
 }
 
 bool testMatch (bool debug) {
@@ -209,7 +220,7 @@ bool testMatch (bool debug) {
 
 int main () {
     summarize(testCheckPattern);
-    summarize(testGeneratePattern);
+    testGeneratePattern(true);
     summarize(testMatch);
     return 0;
 }
