@@ -20,6 +20,11 @@ typedef struct pattern_node_t {
     List* neighbors;
 } PatternNode;
 
+typedef struct pattern_t {
+    char* name;
+    PatternNode* root;
+} Pattern;
+
 List* newList () {
     List* list_p = calloc(1, sizeof(List));
     list_p->head = NULL;
@@ -60,14 +65,14 @@ PatternNode* newNode (char* value) {
     return node_p;
 }
 
-void freePattern (PatternNode* root) {
+void freePatternNode (PatternNode* root) {
     // free all nodes in the tree, avoiding repeated free
     // root could be in its own neighbors list
     if (root == NULL) return;
     ListNode* node_p = root->neighbors->head;
     while (node_p != NULL) {
         if (node_p->value != (pointer) root) {
-            freePattern((PatternNode*) node_p->value);
+            freePatternNode((PatternNode*) node_p->value);
         }
         node_p = node_p->next;
     }
@@ -121,6 +126,30 @@ PatternNode* generatePattern (char* pattern) {
     return root;
 }
 
+Pattern* newPattern (char* name, char* pattern) {
+    Pattern* pattern_p = calloc(1, sizeof(Pattern));
+    pattern_p->name = name;
+    pattern_p->root = generatePattern(pattern);
+    return pattern_p;
+}
+
+void freePattern (Pattern* pattern_p) {
+    freePatternNode(pattern_p->root);
+    free(pattern_p);
+}
+
+int match (Pattern* pattern_p, char* string) {
+    // return first index of string that matches pattern
+    int i = 0;
+    while (string[i] != '\0') {
+        if (checkPattern(pattern_p->root, string + i)) {
+            return i;
+        }
+        i++;
+    }
+    return -1;
+}
+
 char* boolToResultString (bool b) {
     if (b) return "PASSED";
     return "FAILED";
@@ -129,6 +158,11 @@ char* boolToResultString (bool b) {
 bool assert(bool value, bool expected, bool debug) {
     if (debug) printf("%s\n", boolToResultString(value == expected));
     return value == expected;
+}
+
+bool summarize (bool (*f) (bool)) {
+    bool result = f(false);
+    printf("Test %s\n", boolToResultString(result));
 }
 
 bool testCheckPattern (bool debug) {
@@ -140,7 +174,7 @@ bool testCheckPattern (bool debug) {
     bool b1 = assert(checkPattern(node_1_p, "A1"), true, debug);
     bool b2 = assert(checkPattern(node_1_p, "A"), false, debug);
     bool b3 = assert(checkPattern(node_1_p, "A1B"), true, debug);
-    freePattern(node_1_p);
+    freePatternNode(node_1_p);
     return b1 && b2 && b3;
 }
 
@@ -153,12 +187,29 @@ bool testGeneratePattern (bool debug) {
     bool b4 = assert(checkPattern(node_1_p, "1A1"), true, debug);
     bool b5 = assert(checkPattern(node_1_p, "12A"), true, debug);
     bool b6 = assert(checkPattern(node_1_p, "A1"), false, debug);
-    freePattern(node_1_p);
+    freePatternNode(node_1_p);
     return b1 && b2 && b3 && b4 && b5 && b6;
 }
 
+bool testMatch (bool debug) {
+    Pattern* pattern_p = newPattern("ID", "d+u");
+    bool b1 = assert(match(pattern_p, "1A") == 0, true, debug);
+    bool b2 = assert(match(pattern_p, "1") == -1, true, debug);
+    bool b3 = assert(match(pattern_p, "1AB") == 0, true, debug);
+    bool b4 = assert(match(pattern_p, "1A1") == 0, true, debug);
+    bool b5 = assert(match(pattern_p, "12A") == 0, true, debug);
+    bool b6 = assert(match(pattern_p, "A1") == -1, true, debug);
+    bool b7 = assert(match(pattern_p, "A1B") == 1, true, debug);
+    bool b8 = assert(match(pattern_p, "abc123B2") == 3, true, debug);
+    bool b9 = assert(match(pattern_p, "abc123b2") == -1, true, debug);
+    bool b10 = assert(match(pattern_p, "abc123b2D") == 7, true, debug);
+    freePattern(pattern_p);
+    return b1 && b2 && b3 && b4 && b5 && b6 && b7 && b8 && b9 && b10;
+}
+
 int main () {
-    testCheckPattern(true);
-    testGeneratePattern(true);
+    summarize(testCheckPattern);
+    summarize(testGeneratePattern);
+    summarize(testMatch);
     return 0;
 }
